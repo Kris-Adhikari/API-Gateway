@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/yourusername/api-gateway/internal/config"
+	"github.com/yourusername/api-gateway/internal/database"
 	"github.com/yourusername/api-gateway/internal/handlers"
 	"github.com/yourusername/api-gateway/internal/services"
 )
@@ -17,16 +18,24 @@ func main() {
 	}
 
 	// Print startup info
-	log.Printf("Starting API Gateway (Phase 1: Basic Routing)")
+	log.Printf("Starting API Gateway (Phase 2: Database + Logging)")
 	log.Printf("Port: %s", cfg.Port)
 	log.Printf("Backend: %s", cfg.BackendURL)
 	log.Println()
 
+	// Connect to database
+	db, err := database.Connect(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+	log.Printf("Connected to PostgreSQL")
+
 	// Initialize proxy service
 	proxyService := services.NewProxyService(cfg.BackendURL)
 
-	// Initialize proxy handler
-	proxyHandler := handlers.NewProxyHandler(proxyService)
+	// Initialize proxy handler with database
+	proxyHandler := handlers.NewProxyHandler(proxyService, db)
 
 	// Create HTTP server
 	mux := http.NewServeMux()

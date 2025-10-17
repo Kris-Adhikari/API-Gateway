@@ -8,9 +8,10 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	Port       string
-	BackendURL string
-	LogLevel   string
+	Port        string
+	BackendURL  string
+	DatabaseURL string
+	LogLevel    string
 }
 
 // Load reads configuration from environment variables
@@ -19,9 +20,10 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Port:       getEnv("PORT", "8080"),
-		BackendURL: getEnv("BACKEND_URL", "https://jsonplaceholder.typicode.com"),
-		LogLevel:   getEnv("LOG_LEVEL", "info"),
+		Port:        getEnv("PORT", "8080"),
+		BackendURL:  getEnv("BACKEND_URL", "https://jsonplaceholder.typicode.com"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:password@localhost:5432/api_gateway?sslmode=disable"),
+		LogLevel:    getEnv("LOG_LEVEL", "info"),
 	}
 
 	return cfg, nil
