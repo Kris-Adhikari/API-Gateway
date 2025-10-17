@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/yourusername/api-gateway/internal/database"
+	"github.com/yourusername/api-gateway/internal/middleware"
 	"github.com/yourusername/api-gateway/internal/models"
 	"github.com/yourusername/api-gateway/internal/services"
 )
@@ -77,6 +78,12 @@ func (h *ProxyHandler) logRequest(r *http.Request, status int, duration time.Dur
 		durationMs,
 	)
 
+	// Get API key from context if available
+	apiKey := middleware.GetAPIKeyFromContext(r.Context())
+	if apiKey != nil {
+		logMsg += fmt.Sprintf(" [key:%s]", apiKey.Name)
+	}
+
 	if errMsg != "" {
 		logMsg += fmt.Sprintf(" [%s]", errMsg)
 	}
@@ -85,13 +92,18 @@ func (h *ProxyHandler) logRequest(r *http.Request, status int, duration time.Dur
 
 	// Log to database
 	requestLog := &models.RequestLog{
-		APIKeyID:       nil, // Will be set in Phase 3 when we add authentication
+		APIKeyID:       nil,
 		Method:         r.Method,
 		Path:           r.URL.Path,
 		StatusCode:     status,
 		ResponseTimeMs: int(durationMs),
 		IPAddress:      getClientIP(r),
 		UserAgent:      r.UserAgent(),
+	}
+
+	// Associate log with API key if authenticated
+	if apiKey != nil {
+		requestLog.APIKeyID = &apiKey.ID
 	}
 
 	if err := h.db.LogRequest(requestLog); err != nil {

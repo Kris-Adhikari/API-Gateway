@@ -7,6 +7,7 @@ import (
 	"github.com/yourusername/api-gateway/internal/config"
 	"github.com/yourusername/api-gateway/internal/database"
 	"github.com/yourusername/api-gateway/internal/handlers"
+	"github.com/yourusername/api-gateway/internal/middleware"
 	"github.com/yourusername/api-gateway/internal/services"
 )
 
@@ -18,7 +19,7 @@ func main() {
 	}
 
 	// Print startup info
-	log.Printf("Starting API Gateway (Phase 2: Database + Logging)")
+	log.Printf("Starting API Gateway (Phase 3: Authentication)")
 	log.Printf("Port: %s", cfg.Port)
 	log.Printf("Backend: %s", cfg.BackendURL)
 	log.Println()
@@ -31,15 +32,35 @@ func main() {
 	defer db.Close()
 	log.Printf("Connected to PostgreSQL")
 
+	// Initialize middleware
+	authMiddleware := middleware.NewAuthMiddleware(db)
+
 	// Initialize proxy service
 	proxyService := services.NewProxyService(cfg.BackendURL)
 
-	// Initialize proxy handler with database
+	// Initialize handlers
 	proxyHandler := handlers.NewProxyHandler(proxyService, db)
+	adminHandler := handlers.NewAdminHandler(db)
 
-	// Create HTTP server
+	// Create HTTP server with routes
 	mux := http.NewServeMux()
-	mux.Handle("/", proxyHandler)
+
+	// Admin routes (no auth required for managing keys)
+	mux.HandleFunc("/admin/keys", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			adminHandler.CreateAPIKey(w, r)
+		case http.MethodGet:
+			adminHandler.ListAPIKeys(w, r)
+		default:
+			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/admin/keys/delete", adminHandler.DeleteAPIKey)
+	mux.HandleFunc("/admin/keys/toggle", adminHandler.ToggleAPIKey)
+
+	// Gateway routes (require authentication)
+	mux.Handle("/", authMiddleware.Middleware(proxyHandler))
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -49,6 +70,7 @@ func main() {
 	// Start server
 	log.Printf("API Gateway started on port %s", cfg.Port)
 	log.Printf("Forwarding requests to %s", cfg.BackendURL)
+	log.Printf("Admin endpoints available at /admin/keys")
 	log.Printf("Ready to accept requests")
 
 	if err := server.ListenAndServe(); err != nil {
