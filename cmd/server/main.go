@@ -19,7 +19,7 @@ func main() {
 	}
 
 	// Print startup info
-	log.Printf("Starting API Gateway (Phase 3: Authentication)")
+	log.Printf("Starting API Gateway (Phase 4: Rate Limiting)")
 	log.Printf("Port: %s", cfg.Port)
 	log.Printf("Backend: %s", cfg.BackendURL)
 	log.Println()
@@ -32,8 +32,17 @@ func main() {
 	defer db.Close()
 	log.Printf("Connected to PostgreSQL")
 
+	// Connect to Redis
+	rateLimiter, err := services.NewRateLimiter(cfg.RedisURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	defer rateLimiter.Close()
+	log.Printf("Connected to Redis")
+
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(db)
+	rateLimitMiddleware := middleware.NewRateLimitMiddleware(rateLimiter)
 
 	// Initialize proxy service
 	proxyService := services.NewProxyService(cfg.BackendURL)
@@ -59,8 +68,8 @@ func main() {
 	mux.HandleFunc("/admin/keys/delete", adminHandler.DeleteAPIKey)
 	mux.HandleFunc("/admin/keys/toggle", adminHandler.ToggleAPIKey)
 
-	// Gateway routes (require authentication)
-	mux.Handle("/", authMiddleware.Middleware(proxyHandler))
+	// Gateway routes (require authentication and rate limiting)
+	mux.Handle("/", authMiddleware.Middleware(rateLimitMiddleware.Middleware(proxyHandler)))
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
