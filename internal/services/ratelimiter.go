@@ -35,6 +35,11 @@ func (rl *RateLimiter) Close() error {
 	return rl.client.Close()
 }
 
+// GetClient returns the underlying Redis client (for cache service)
+func (rl *RateLimiter) GetClient() *redis.Client {
+	return rl.client
+}
+
 // AllowRequest checks if a request should be allowed based on rate limits
 // Returns (allowed bool, remainingMinute int, remainingHour int, error)
 func (rl *RateLimiter) AllowRequest(ctx context.Context, apiKey string, limitPerMinute, limitPerHour int) (bool, int, int, error) {

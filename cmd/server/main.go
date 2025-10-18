@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/yourusername/api-gateway/internal/config"
 	"github.com/yourusername/api-gateway/internal/database"
@@ -19,7 +20,7 @@ func main() {
 	}
 
 	// Print startup info
-	log.Printf("Starting API Gateway (Phase 4: Rate Limiting)")
+	log.Printf("Starting API Gateway (Phase 5: Response Caching)")
 	log.Printf("Port: %s", cfg.Port)
 	log.Printf("Backend: %s", cfg.BackendURL)
 	log.Println()
@@ -40,9 +41,13 @@ func main() {
 	defer rateLimiter.Close()
 	log.Printf("Connected to Redis")
 
+	// Initialize cache service (using same Redis client)
+	cacheService := services.NewCacheService(rateLimiter.GetClient(), 60*time.Second)
+
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(db)
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(rateLimiter)
+	cacheMiddleware := middleware.NewCacheMiddleware(cacheService, 60*time.Second)
 
 	// Initialize proxy service
 	proxyService := services.NewProxyService(cfg.BackendURL)
@@ -68,8 +73,9 @@ func main() {
 	mux.HandleFunc("/admin/keys/delete", adminHandler.DeleteAPIKey)
 	mux.HandleFunc("/admin/keys/toggle", adminHandler.ToggleAPIKey)
 
-	// Gateway routes (require authentication and rate limiting)
-	mux.Handle("/", authMiddleware.Middleware(rateLimitMiddleware.Middleware(proxyHandler)))
+	// Gateway routes (require authentication, rate limiting, and caching)
+	// Order: auth -> rate limit -> cache -> proxy
+	mux.Handle("/", authMiddleware.Middleware(rateLimitMiddleware.Middleware(cacheMiddleware.Middleware(proxyHandler))))
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
