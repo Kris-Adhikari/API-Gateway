@@ -10,12 +10,16 @@ import (
 
 // RateLimitMiddleware enforces rate limiting per API key
 type RateLimitMiddleware struct {
-	rateLimiter *services.RateLimiter
+	rateLimiter      *services.RateLimiter
+	metricsCollector *services.MetricsCollector
 }
 
 // NewRateLimitMiddleware creates a new rate limit middleware
-func NewRateLimitMiddleware(rateLimiter *services.RateLimiter) *RateLimitMiddleware {
-	return &RateLimitMiddleware{rateLimiter: rateLimiter}
+func NewRateLimitMiddleware(rateLimiter *services.RateLimiter, metricsCollector *services.MetricsCollector) *RateLimitMiddleware {
+	return &RateLimitMiddleware{
+		rateLimiter:      rateLimiter,
+		metricsCollector: metricsCollector,
+	}
 }
 
 // Middleware wraps an http.Handler and enforces rate limits
@@ -52,6 +56,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 
 		if !allowed {
 			log.Printf("[WARN] Rate limit exceeded for API key: %s", apiKey.Name)
+			m.metricsCollector.RecordRateLimitHit()
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
 			fmt.Fprintf(w, `{"error":"Rate limit exceeded. Try again later."}`)

@@ -15,15 +15,17 @@ import (
 
 // ProxyHandler handles incoming HTTP requests and forwards them to backend
 type ProxyHandler struct {
-	proxyService *services.ProxyService
-	db           *database.DB
+	proxyService     *services.ProxyService
+	db               *database.DB
+	metricsCollector *services.MetricsCollector
 }
 
 // NewProxyHandler creates a new proxy handler
-func NewProxyHandler(proxyService *services.ProxyService, db *database.DB) *ProxyHandler {
+func NewProxyHandler(proxyService *services.ProxyService, db *database.DB, metricsCollector *services.MetricsCollector) *ProxyHandler {
 	return &ProxyHandler{
-		proxyService: proxyService,
-		db:           db,
+		proxyService:     proxyService,
+		db:               db,
+		metricsCollector: metricsCollector,
 	}
 }
 
@@ -109,6 +111,9 @@ func (h *ProxyHandler) logRequest(r *http.Request, status int, duration time.Dur
 	if err := h.db.LogRequest(requestLog); err != nil {
 		log.Printf("Failed to log request to database: %v", err)
 	}
+
+	// Record metrics
+	h.metricsCollector.RecordRequest(int(durationMs), status)
 }
 
 // getClientIP extracts the client's IP address from the request

@@ -12,15 +12,17 @@ import (
 
 // CacheMiddleware caches GET request responses
 type CacheMiddleware struct {
-	cacheService *services.CacheService
-	cacheTTL     time.Duration
+	cacheService     *services.CacheService
+	cacheTTL         time.Duration
+	metricsCollector *services.MetricsCollector
 }
 
 // NewCacheMiddleware creates a new cache middleware
-func NewCacheMiddleware(cacheService *services.CacheService, cacheTTL time.Duration) *CacheMiddleware {
+func NewCacheMiddleware(cacheService *services.CacheService, cacheTTL time.Duration, metricsCollector *services.MetricsCollector) *CacheMiddleware {
 	return &CacheMiddleware{
-		cacheService: cacheService,
-		cacheTTL:     cacheTTL,
+		cacheService:     cacheService,
+		cacheTTL:         cacheTTL,
+		metricsCollector: metricsCollector,
 	}
 }
 
@@ -81,6 +83,7 @@ func (m *CacheMiddleware) Middleware(next http.Handler) http.Handler {
 		// Cache hit
 		if cached != nil {
 			log.Printf("[INFO] Cache HIT: %s %s", r.Method, r.URL.Path)
+			m.metricsCollector.RecordCacheHit()
 			w.Header().Set("X-Cache", "HIT")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(cached.StatusCode)
@@ -90,6 +93,7 @@ func (m *CacheMiddleware) Middleware(next http.Handler) http.Handler {
 
 		// Cache miss - capture response
 		log.Printf("[INFO] Cache MISS: %s %s", r.Method, r.URL.Path)
+		m.metricsCollector.RecordCacheMiss()
 		w.Header().Set("X-Cache", "MISS")
 
 		// Wrap response writer to capture response

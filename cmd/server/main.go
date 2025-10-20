@@ -20,7 +20,7 @@ func main() {
 	}
 
 	// Print startup info
-	log.Printf("Starting API Gateway (Phase 5: Response Caching)")
+	log.Printf("Starting API Gateway (Phase 6: Metrics & Observability)")
 	log.Printf("Port: %s", cfg.Port)
 	log.Printf("Backend: %s", cfg.BackendURL)
 	log.Println()
@@ -44,20 +44,28 @@ func main() {
 	// Initialize cache service (using same Redis client)
 	cacheService := services.NewCacheService(rateLimiter.GetClient(), 60*time.Second)
 
+	// Initialize metrics collector
+	metricsCollector := services.NewMetricsCollector()
+
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(db)
-	rateLimitMiddleware := middleware.NewRateLimitMiddleware(rateLimiter)
-	cacheMiddleware := middleware.NewCacheMiddleware(cacheService, 60*time.Second)
+	rateLimitMiddleware := middleware.NewRateLimitMiddleware(rateLimiter, metricsCollector)
+	cacheMiddleware := middleware.NewCacheMiddleware(cacheService, 60*time.Second, metricsCollector)
 
 	// Initialize proxy service
 	proxyService := services.NewProxyService(cfg.BackendURL)
 
 	// Initialize handlers
-	proxyHandler := handlers.NewProxyHandler(proxyService, db)
+	proxyHandler := handlers.NewProxyHandler(proxyService, db, metricsCollector)
 	adminHandler := handlers.NewAdminHandler(db)
+	metricsHandler := handlers.NewMetricsHandler(metricsCollector, db, rateLimiter)
 
 	// Create HTTP server with routes
 	mux := http.NewServeMux()
+
+	// Monitoring endpoints (no auth required)
+	mux.HandleFunc("/health", metricsHandler.HealthCheck)
+	mux.HandleFunc("/metrics", metricsHandler.GetMetrics)
 
 	// Admin routes (no auth required for managing keys)
 	mux.HandleFunc("/admin/keys", func(w http.ResponseWriter, r *http.Request) {
