@@ -7,18 +7,16 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yourusername/api-gateway/internal/database"
-	"github.com/yourusername/api-gateway/internal/services"
+	"api-gateway/internal/database"
+	"api-gateway/internal/services"
 )
 
-// MetricsHandler handles metrics endpoints
 type MetricsHandler struct {
 	metricsCollector *services.MetricsCollector
 	db               *database.DB
 	rateLimiter      *services.RateLimiter
 }
 
-// NewMetricsHandler creates a new metrics handler
 func NewMetricsHandler(metricsCollector *services.MetricsCollector, db *database.DB, rateLimiter *services.RateLimiter) *MetricsHandler {
 	return &MetricsHandler{
 		metricsCollector: metricsCollector,
@@ -27,7 +25,6 @@ func NewMetricsHandler(metricsCollector *services.MetricsCollector, db *database
 	}
 }
 
-// GetMetrics returns current system metrics
 func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
@@ -40,14 +37,12 @@ func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(snapshot)
 }
 
-// HealthResponse represents the health check response
 type HealthResponse struct {
 	Status    string            `json:"status"`
 	Timestamp string            `json:"timestamp"`
 	Services  map[string]string `json:"services"`
 }
 
-// HealthCheck checks the health of the system and its dependencies
 func (h *MetricsHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
@@ -63,7 +58,6 @@ func (h *MetricsHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 		Services:  make(map[string]string),
 	}
 
-	// Check PostgreSQL
 	if err := h.checkPostgreSQL(ctx); err != nil {
 		health.Services["postgresql"] = "unhealthy: " + err.Error()
 		health.Status = "degraded"
@@ -72,7 +66,6 @@ func (h *MetricsHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 		health.Services["postgresql"] = "healthy"
 	}
 
-	// Check Redis
 	if err := h.checkRedis(ctx); err != nil {
 		health.Services["redis"] = "unhealthy: " + err.Error()
 		health.Status = "degraded"
@@ -81,7 +74,6 @@ func (h *MetricsHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 		health.Services["redis"] = "healthy"
 	}
 
-	// Set appropriate status code
 	statusCode := http.StatusOK
 	if health.Status == "degraded" {
 		statusCode = http.StatusServiceUnavailable
@@ -92,15 +84,11 @@ func (h *MetricsHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(health)
 }
 
-// checkPostgreSQL checks if PostgreSQL is reachable
 func (h *MetricsHandler) checkPostgreSQL(_ context.Context) error {
-	// Try to list API keys (simple query to test connectivity)
 	_, err := h.db.ListAPIKeys()
 	return err
 }
 
-// checkRedis checks if Redis is reachable
 func (h *MetricsHandler) checkRedis(ctx context.Context) error {
-	// Try to ping Redis
 	return h.rateLimiter.GetClient().Ping(ctx).Err()
 }

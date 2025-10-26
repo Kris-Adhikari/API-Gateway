@@ -7,28 +7,24 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/api-gateway/internal/database"
-	"github.com/yourusername/api-gateway/internal/models"
+	"api-gateway/internal/database"
+	"api-gateway/internal/models"
 )
 
-// AdminHandler handles admin operations for API keys
 type AdminHandler struct {
 	db *database.DB
 }
 
-// NewAdminHandler creates a new admin handler
 func NewAdminHandler(db *database.DB) *AdminHandler {
 	return &AdminHandler{db: db}
 }
 
-// CreateAPIKeyRequest represents the request body for creating an API key
 type CreateAPIKeyRequest struct {
 	Name               string `json:"name"`
 	RateLimitPerMinute int    `json:"rate_limit_per_minute"`
 	RateLimitPerHour   int    `json:"rate_limit_per_hour"`
 }
 
-// CreateAPIKey creates a new API key
 func (h *AdminHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
@@ -41,19 +37,17 @@ func (h *AdminHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate request
 	if req.Name == "" {
 		http.Error(w, `{"error":"Name is required"}`, http.StatusBadRequest)
 		return
 	}
 	if req.RateLimitPerMinute <= 0 {
-		req.RateLimitPerMinute = 100 // Default
+		req.RateLimitPerMinute = 100
 	}
 	if req.RateLimitPerHour <= 0 {
-		req.RateLimitPerHour = 5000 // Default
+		req.RateLimitPerHour = 5000
 	}
 
-	// Generate a new API key
 	apiKey := &models.APIKey{
 		Key:                uuid.New().String(),
 		Name:               req.Name,
@@ -63,7 +57,6 @@ func (h *AdminHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:          time.Now(),
 	}
 
-	// Save to database
 	if err := h.db.CreateAPIKey(apiKey); err != nil {
 		log.Printf("[ERROR] Failed to create API key: %v", err)
 		http.Error(w, `{"error":"Failed to create API key"}`, http.StatusInternalServerError)
@@ -72,13 +65,11 @@ func (h *AdminHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[INFO] Created new API key: %s (%s)", apiKey.Name, apiKey.Key)
 
-	// Return the created API key
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(apiKey)
 }
 
-// ListAPIKeys returns all API keys
 func (h *AdminHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
@@ -96,14 +87,12 @@ func (h *AdminHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(keys)
 }
 
-// DeleteAPIKey deletes an API key by ID
 func (h *AdminHandler) DeleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Extract ID from query parameter
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
 		http.Error(w, `{"error":"ID parameter is required"}`, http.StatusBadRequest)
@@ -129,14 +118,12 @@ func (h *AdminHandler) DeleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "API key deleted successfully"})
 }
 
-// ToggleAPIKey enables or disables an API key
 func (h *AdminHandler) ToggleAPIKey(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
 		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Extract ID from query parameter
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
 		http.Error(w, `{"error":"ID parameter is required"}`, http.StatusBadRequest)

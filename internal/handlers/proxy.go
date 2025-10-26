@@ -7,20 +7,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/api-gateway/internal/database"
-	"github.com/yourusername/api-gateway/internal/middleware"
-	"github.com/yourusername/api-gateway/internal/models"
-	"github.com/yourusername/api-gateway/internal/services"
+	"api-gateway/internal/database"
+	"api-gateway/internal/middleware"
+	"api-gateway/internal/models"
+	"api-gateway/internal/services"
 )
 
-// ProxyHandler handles incoming HTTP requests and forwards them to backend
 type ProxyHandler struct {
 	proxyService     *services.ProxyService
 	db               *database.DB
 	metricsCollector *services.MetricsCollector
 }
 
-// NewProxyHandler creates a new proxy handler
 func NewProxyHandler(proxyService *services.ProxyService, db *database.DB, metricsCollector *services.MetricsCollector) *ProxyHandler {
 	return &ProxyHandler{
 		proxyService:     proxyService,
@@ -29,11 +27,9 @@ func NewProxyHandler(proxyService *services.ProxyService, db *database.DB, metri
 	}
 }
 
-// ServeHTTP implements the http.Handler interface
 func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
-	// Forward request to backend
 	resp, err := h.proxyService.ForwardRequest(r)
 	if err != nil {
 		h.logRequest(r, http.StatusBadGateway, time.Since(start), "error")
@@ -42,18 +38,15 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	// Copy response back to client
 	err = h.proxyService.CopyResponse(w, resp)
 	if err != nil {
 		h.logRequest(r, http.StatusInternalServerError, time.Since(start), "error copying response")
 		return
 	}
 
-	// Log successful request
 	h.logRequest(r, resp.StatusCode, time.Since(start), "")
 }
 
-// logRequest logs request details to terminal and database
 func (h *ProxyHandler) logRequest(r *http.Request, status int, duration time.Duration, errMsg string) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	durationMs := duration.Milliseconds()
@@ -92,7 +85,6 @@ func (h *ProxyHandler) logRequest(r *http.Request, status int, duration time.Dur
 
 	log.Println(logMsg)
 
-	// Log to database
 	requestLog := &models.RequestLog{
 		APIKeyID:       nil,
 		Method:         r.Method,
@@ -103,7 +95,6 @@ func (h *ProxyHandler) logRequest(r *http.Request, status int, duration time.Dur
 		UserAgent:      r.UserAgent(),
 	}
 
-	// Associate log with API key if authenticated
 	if apiKey != nil {
 		requestLog.APIKeyID = &apiKey.ID
 	}
@@ -112,28 +103,21 @@ func (h *ProxyHandler) logRequest(r *http.Request, status int, duration time.Dur
 		log.Printf("Failed to log request to database: %v", err)
 	}
 
-	// Record metrics
 	h.metricsCollector.RecordRequest(int(durationMs), status)
 }
 
-// getClientIP extracts the client's IP address from the request
 func getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header first
 	forwarded := r.Header.Get("X-Forwarded-For")
 	if forwarded != "" {
-		// X-Forwarded-For can contain multiple IPs, take the first one
 		ips := strings.Split(forwarded, ",")
 		return strings.TrimSpace(ips[0])
 	}
 
-	// Check X-Real-IP header
 	realIP := r.Header.Get("X-Real-IP")
 	if realIP != "" {
 		return realIP
 	}
 
-	// Fall back to RemoteAddr
-	// RemoteAddr includes port, so we need to strip it
 	ip := r.RemoteAddr
 	if idx := strings.LastIndex(ip, ":"); idx != -1 {
 		ip = ip[:idx]

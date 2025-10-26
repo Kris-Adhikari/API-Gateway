@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// APIKey represents an API key for authentication
 type APIKey struct {
 	ID                 uuid.UUID `json:"id"`
 	Key                string    `json:"key"`
@@ -17,10 +16,9 @@ type APIKey struct {
 	CreatedAt          time.Time `json:"created_at"`
 }
 
-// RequestLog represents a logged HTTP request
 type RequestLog struct {
 	ID             uuid.UUID  `json:"id"`
-	APIKeyID       *uuid.UUID `json:"api_key_id,omitempty"` // Nullable for unauthenticated requests
+	APIKeyID       *uuid.UUID `json:"api_key_id,omitempty"`
 	Method         string     `json:"method"`
 	Path           string     `json:"path"`
 	StatusCode     int        `json:"status_code"`
@@ -30,13 +28,12 @@ type RequestLog struct {
 	CreatedAt      time.Time  `json:"created_at"`
 }
 
-// BackendRoute represents a route configuration
 type BackendRoute struct {
 	ID              uuid.UUID `json:"id"`
 	PathPattern     string    `json:"path_pattern"`
 	BackendURL      string    `json:"backend_url"`
 	Method          string    `json:"method"`
-	CacheTTLSeconds *int      `json:"cache_ttl_seconds,omitempty"` // Nullable
+	CacheTTLSeconds *int      `json:"cache_ttl_seconds,omitempty"`
 	IsActive        bool      `json:"is_active"`
 	CreatedAt       time.Time `json:"created_at"`
 }

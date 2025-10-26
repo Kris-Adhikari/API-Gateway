@@ -6,7 +6,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds all configuration for the application
 type Config struct {
 	Port        string
 	BackendURL  string
@@ -15,9 +14,7 @@ type Config struct {
 	LogLevel    string
 }
 
-// Load reads configuration from environment variables
 func Load() (*Config, error) {
-	// Load .env file if it exists (ignore error if not found)
 	_ = godotenv.Load()
 
 	cfg := &Config{
@@ -31,7 +28,6 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-// getEnv gets an environment variable or returns a default value
 func getEnv(key, defaultValue string) string {
 	value := os.Getenv(key)
 	if value == "" {

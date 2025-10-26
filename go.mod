@@ -1,4 +1,4 @@
-module github.com/yourusername/api-gateway
+module api-gateway
 
 go 1.21
 

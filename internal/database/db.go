@@ -7,28 +7,24 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	_ "github.com/lib/pq" // PostgreSQL driver
-	"github.com/yourusername/api-gateway/internal/models"
+	_ "github.com/lib/pq"
+	"api-gateway/internal/models"
 )
 
-// DB wraps the database connection
 type DB struct {
 	conn *sql.DB
 }
 
-// Connect establishes a connection to PostgreSQL
 func Connect(databaseURL string) (*DB, error) {
 	conn, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Test the connection
 	if err := conn.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Set connection pool settings
 	conn.SetMaxOpenConns(25)
 	conn.SetMaxIdleConns(5)
 	conn.SetConnMaxLifetime(5 * time.Minute)
@@ -38,12 +34,10 @@ func Connect(databaseURL string) (*DB, error) {
 	return &DB{conn: conn}, nil
 }
 
-// Close closes the database connection
 func (db *DB) Close() error {
 	return db.conn.Close()
 }
 
-// LogRequest inserts a request log into the database
 func (db *DB) LogRequest(log *models.RequestLog) error {
 	query := `
 		INSERT INTO request_logs (api_key_id, method, path, status_code, response_time_ms, ip_address, user_agent, created_at)
@@ -70,7 +64,6 @@ func (db *DB) LogRequest(log *models.RequestLog) error {
 	return nil
 }
 
-// GetAPIKeyByKey retrieves an API key by its key string
 func (db *DB) GetAPIKeyByKey(key string) (*models.APIKey, error) {
 	query := `
 		SELECT id, key, name, rate_limit_per_minute, rate_limit_per_hour, is_active, created_at
@@ -90,7 +83,7 @@ func (db *DB) GetAPIKeyByKey(key string) (*models.APIKey, error) {
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, nil // Key not found
+		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API key: %w", err)
@@ -99,7 +92,6 @@ func (db *DB) GetAPIKeyByKey(key string) (*models.APIKey, error) {
 	return apiKey, nil
 }
 
-// CreateAPIKey creates a new API key
 func (db *DB) CreateAPIKey(apiKey *models.APIKey) error {
 	query := `
 		INSERT INTO api_keys (key, name, rate_limit_per_minute, rate_limit_per_hour, is_active, created_at)
@@ -124,7 +116,6 @@ func (db *DB) CreateAPIKey(apiKey *models.APIKey) error {
 	return nil
 }
 
-// ListAPIKeys retrieves all API keys
 func (db *DB) ListAPIKeys() ([]models.APIKey, error) {
 	query := `
 		SELECT id, key, name, rate_limit_per_minute, rate_limit_per_hour, is_active, created_at
@@ -159,7 +150,6 @@ func (db *DB) ListAPIKeys() ([]models.APIKey, error) {
 	return apiKeys, nil
 }
 
-// DeleteAPIKey deletes an API key by ID
 func (db *DB) DeleteAPIKey(id uuid.UUID) error {
 	query := `DELETE FROM api_keys WHERE id = $1`
 
@@ -180,7 +170,6 @@ func (db *DB) DeleteAPIKey(id uuid.UUID) error {
 	return nil
 }
 
-// ToggleAPIKey toggles the is_active status of an API key
 func (db *DB) ToggleAPIKey(id uuid.UUID) error {
 	query := `UPDATE api_keys SET is_active = NOT is_active WHERE id = $1`
 

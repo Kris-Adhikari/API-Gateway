@@ -5,11 +5,9 @@ import (
 	"time"
 )
 
-// MetricsCollector tracks system metrics
 type MetricsCollector struct {
 	mu sync.RWMutex
 
-	// Counters
 	totalRequests    int64
 	successRequests  int64
 	errorRequests    int64
@@ -17,21 +15,17 @@ type MetricsCollector struct {
 	cacheMisses      int64
 	rateLimitHits    int64
 
-	// Response times
-	totalResponseTime int64 // in milliseconds
+	totalResponseTime int64
 
-	// Startup time
 	startTime time.Time
 }
 
-// NewMetricsCollector creates a new metrics collector
 func NewMetricsCollector() *MetricsCollector {
 	return &MetricsCollector{
 		startTime: time.Now(),
 	}
 }
 
-// RecordRequest records a request with its response time and status
 func (mc *MetricsCollector) RecordRequest(responseTimeMs int, statusCode int) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
@@ -46,28 +40,24 @@ func (mc *MetricsCollector) RecordRequest(responseTimeMs int, statusCode int) {
 	}
 }
 
-// RecordCacheHit records a cache hit
 func (mc *MetricsCollector) RecordCacheHit() {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 	mc.cacheHits++
 }
 
-// RecordCacheMiss records a cache miss
 func (mc *MetricsCollector) RecordCacheMiss() {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 	mc.cacheMisses++
 }
 
-// RecordRateLimitHit records when a request is rate limited
 func (mc *MetricsCollector) RecordRateLimitHit() {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 	mc.rateLimitHits++
 }
 
-// MetricsSnapshot represents a point-in-time view of metrics
 type MetricsSnapshot struct {
 	UptimeSeconds       int64   `json:"uptime_seconds"`
 	TotalRequests       int64   `json:"total_requests"`
@@ -79,7 +69,6 @@ type MetricsSnapshot struct {
 	Timestamp           string  `json:"timestamp"`
 }
 
-// GetSnapshot returns a snapshot of current metrics
 func (mc *MetricsCollector) GetSnapshot() *MetricsSnapshot {
 	mc.mu.RLock()
 	defer mc.mu.RUnlock()
@@ -94,22 +83,18 @@ func (mc *MetricsCollector) GetSnapshot() *MetricsSnapshot {
 		Timestamp:         time.Now().Format(time.RFC3339),
 	}
 
-	// Calculate requests per second
 	if uptimeSeconds > 0 {
 		snapshot.RequestsPerSecond = float64(mc.totalRequests) / float64(uptimeSeconds)
 	}
 
-	// Calculate average response time
 	if mc.totalRequests > 0 {
 		snapshot.AvgResponseTimeMs = float64(mc.totalResponseTime) / float64(mc.totalRequests)
 	}
 
-	// Calculate error rate
 	if mc.totalRequests > 0 {
 		snapshot.ErrorRate = float64(mc.errorRequests) / float64(mc.totalRequests)
 	}
 
-	// Calculate cache hit rate
 	totalCacheRequests := mc.cacheHits + mc.cacheMisses
 	if totalCacheRequests > 0 {
 		snapshot.CacheHitRate = float64(mc.cacheHits) / float64(totalCacheRequests)
@@ -118,7 +103,6 @@ func (mc *MetricsCollector) GetSnapshot() *MetricsSnapshot {
 	return snapshot
 }
 
-// Reset resets all metrics (useful for testing)
 func (mc *MetricsCollector) Reset() {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()

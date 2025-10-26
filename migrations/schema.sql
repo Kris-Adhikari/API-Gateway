@@ -1,5 +1,4 @@
 -- API Gateway Database Schema
--- Phase 2: Create tables for API keys, request logs, and backend routes
 
 -- API Keys table
 CREATE TABLE IF NOT EXISTS api_keys (
