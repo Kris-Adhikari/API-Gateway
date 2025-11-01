@@ -36,45 +36,117 @@ func (rl *RateLimiter) GetClient() *redis.Client {
 }
 
 func (rl *RateLimiter) AllowRequest(ctx context.Context, apiKey string, limitPerMinute, limitPerHour int) (bool, int, int, error) {
-	now := time.Now()
+	minuteKey := fmt.Sprintf("rate_limit:%s:minute", apiKey)
+	hourKey := fmt.Sprintf("rate_limit:%s:hour", apiKey)
 
-	minuteKey := fmt.Sprintf("rate_limit:%s:minute:%d", apiKey, now.Unix()/60)
-	hourKey := fmt.Sprintf("rate_limit:%s:hour:%d", apiKey, now.Unix()/3600)
-
-	minuteCount, err := rl.incrementAndGet(ctx, minuteKey, 60*time.Second)
+	minuteAllowed, minuteRemaining, err := rl.tokenBucket(ctx, minuteKey, limitPerMinute, 60)
 	if err != nil {
 		return false, 0, 0, fmt.Errorf("failed to check minute rate limit: %w", err)
 	}
 
-	hourCount, err := rl.incrementAndGet(ctx, hourKey, 3600*time.Second)
+	if !minuteAllowed {
+		hourRemaining, _ := rl.getTokens(ctx, hourKey, limitPerHour, 3600)
+		return false, minuteRemaining, hourRemaining, nil
+	}
+
+	hourAllowed, hourRemaining, err := rl.tokenBucket(ctx, hourKey, limitPerHour, 3600)
 	if err != nil {
 		return false, 0, 0, fmt.Errorf("failed to check hour rate limit: %w", err)
 	}
 
-	remainingMinute := limitPerMinute - minuteCount
-	remainingHour := limitPerHour - hourCount
-
-	if minuteCount > limitPerMinute {
-		return false, remainingMinute, remainingHour, nil
-	}
-	if hourCount > limitPerHour {
-		return false, remainingMinute, remainingHour, nil
+	if !hourAllowed {
+		rl.refundToken(ctx, minuteKey)
+		return false, minuteRemaining, hourRemaining, nil
 	}
 
-	return true, remainingMinute, remainingHour, nil
+	return true, minuteRemaining, hourRemaining, nil
 }
 
-func (rl *RateLimiter) incrementAndGet(ctx context.Context, key string, ttl time.Duration) (int, error) {
-	pipe := rl.client.Pipeline()
+func (rl *RateLimiter) tokenBucket(ctx context.Context, key string, capacity int, refillSeconds int) (bool, int, error) {
+	now := time.Now().Unix()
+	tokensKey := key + ":tokens"
+	timestampKey := key + ":timestamp"
 
-	incr := pipe.Incr(ctx, key)
+	tokensVal, err1 := rl.client.Get(ctx, tokensKey).Int()
+	timestampVal, err2 := rl.client.Get(ctx, timestampKey).Int64()
 
-	pipe.Expire(ctx, key, ttl)
+	var tokens int
+	var lastRefill int64
 
-	_, err := pipe.Exec(ctx)
-	if err != nil {
-		return 0, err
+	if err1 != nil || err2 != nil {
+		tokens = capacity - 1
+		lastRefill = now
+	} else {
+		tokens = tokensVal
+		lastRefill = timestampVal
+
+		elapsed := now - lastRefill
+		refillRate := float64(capacity) / float64(refillSeconds)
+		tokensToAdd := int(float64(elapsed) * refillRate)
+
+		if tokensToAdd > 0 {
+			tokens = tokens + tokensToAdd
+			if tokens > capacity {
+				tokens = capacity
+			}
+			lastRefill = now
+		}
+
+		if tokens <= 0 {
+			return false, 0, nil
+		}
+
+		tokens--
 	}
 
-	return int(incr.Val()), nil
+	pipe := rl.client.Pipeline()
+	pipe.Set(ctx, tokensKey, tokens, time.Duration(refillSeconds*2)*time.Second)
+	pipe.Set(ctx, timestampKey, lastRefill, time.Duration(refillSeconds*2)*time.Second)
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return false, 0, err
+	}
+
+	return true, tokens, nil
+}
+
+func (rl *RateLimiter) getTokens(ctx context.Context, key string, capacity int, refillSeconds int) (int, error) {
+	now := time.Now().Unix()
+	tokensKey := key + ":tokens"
+	timestampKey := key + ":timestamp"
+
+	pipe := rl.client.Pipeline()
+	getTokens := pipe.Get(ctx, tokensKey)
+	getTimestamp := pipe.Get(ctx, timestampKey)
+	_, err := pipe.Exec(ctx)
+
+	tokens := capacity
+	lastRefill := now
+
+	if err == nil {
+		if tokensVal, err := getTokens.Int(); err == nil {
+			tokens = tokensVal
+		}
+		if timestampVal, err := getTimestamp.Int64(); err == nil {
+			lastRefill = timestampVal
+		}
+	}
+
+	elapsed := now - lastRefill
+	refillRate := float64(capacity) / float64(refillSeconds)
+	tokensToAdd := int(float64(elapsed) * refillRate)
+
+	if tokensToAdd > 0 {
+		tokens = tokens + tokensToAdd
+		if tokens > capacity {
+			tokens = capacity
+		}
+	}
+
+	return tokens, nil
+}
+
+func (rl *RateLimiter) refundToken(ctx context.Context, key string) {
+	tokensKey := key + ":tokens"
+	rl.client.Incr(ctx, tokensKey)
 }
