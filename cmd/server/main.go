@@ -18,7 +18,7 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	log.Printf("Starting API Gateway (Phase 6: Metrics & Observability)")
+	log.Printf("Starting API Gateway")
 	log.Printf("Port: %s", cfg.Port)
 	log.Printf("Backend: %s", cfg.BackendURL)
 	log.Println()
