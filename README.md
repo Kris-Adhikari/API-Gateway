@@ -1,10 +1,17 @@
 ## API Gateway with Rate Limiter
 ### Design
-
 - Token bucket rate limiting with per-minute and per-hour limits
 - Response caching with Redis (60s cache expiry)
 - API key authentication with PostgreSQL
 - Tracked system metrics like cache hits, cache misses, and rate limits
+### Flowchart of Design
+My interpretation of the design. Tried to use color coding to signify the direction of the path/flow for:
+  - Response from Backend API (Red)
+  - Request from Proxy Handler (Blue)
+  - Cache hit and Cache miss (Green)
+##### Backend API "external REST service" is [jsonplaceholder](https://jsonplaceholder.typicode.com/) for context
+<img width="585" height="452" alt="Screenshot (232)" src="https://github.com/user-attachments/assets/b11ac7f9-3e8b-46c1-957c-82c43d755db8" />
+
 ### Tech
 - Built using Go 1.21
 - Redis for rate limiting and caching
