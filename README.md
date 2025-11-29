@@ -5,7 +5,7 @@
 - API key authentication with PostgreSQL
 - Tracked system metrics like cache hits, cache misses, and rate limits
 ### Flowchart of Design
-My interpretation of the design. Tried to use color coding to signify the direction of the path/flow for:
+Tried to use color coding to show the direction of the path/flow for:
   - Response from Backend API (Red)
   - Request from Proxy Handler (Blue)
   - Cache hit and Cache miss (Green)
@@ -43,3 +43,4 @@ curl http://localhost:8080/metrics
 - Cache hit: ~10ms
 - Cache miss: ~230ms
 - Average improvement: 220ms
+
