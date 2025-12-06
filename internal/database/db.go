@@ -3,12 +3,12 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
+
+	"api-gateway/internal/models"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	"api-gateway/internal/models"
 )
 
 type DB struct {
@@ -18,18 +18,16 @@ type DB struct {
 func Connect(databaseURL string) (*DB, error) {
 	conn, err := sql.Open("postgres", databaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return nil, fmt.Errorf("couldn't open database: %w", err)
 	}
 
 	if err := conn.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		return nil, fmt.Errorf("database not responding: %w", err)
 	}
 
 	conn.SetMaxOpenConns(25)
 	conn.SetMaxIdleConns(5)
 	conn.SetConnMaxLifetime(5 * time.Minute)
-
-	log.Println("Connected to PostgreSQL")
 
 	return &DB{conn: conn}, nil
 }
@@ -58,7 +56,7 @@ func (db *DB) LogRequest(log *models.RequestLog) error {
 	).Scan(&log.ID)
 
 	if err != nil {
-		return fmt.Errorf("failed to insert request log: %w", err)
+		return fmt.Errorf("couldn't log request: %w", err)
 	}
 
 	return nil
@@ -86,7 +84,7 @@ func (db *DB) GetAPIKeyByKey(key string) (*models.APIKey, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get API key: %w", err)
+		return nil, fmt.Errorf("database error: %w", err)
 	}
 
 	return apiKey, nil
@@ -110,7 +108,7 @@ func (db *DB) CreateAPIKey(apiKey *models.APIKey) error {
 	).Scan(&apiKey.ID)
 
 	if err != nil {
-		return fmt.Errorf("failed to create API key: %w", err)
+		return fmt.Errorf("couldn't create API key: %w", err)
 	}
 
 	return nil
@@ -125,7 +123,7 @@ func (db *DB) ListAPIKeys() ([]models.APIKey, error) {
 
 	rows, err := db.conn.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list API keys: %w", err)
+		return nil, fmt.Errorf("couldn't list API keys: %w", err)
 	}
 	defer rows.Close()
 
@@ -142,7 +140,7 @@ func (db *DB) ListAPIKeys() ([]models.APIKey, error) {
 			&apiKey.CreatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan API key: %w", err)
+			return nil, fmt.Errorf("scan error: %w", err)
 		}
 		apiKeys = append(apiKeys, apiKey)
 	}
@@ -155,12 +153,12 @@ func (db *DB) DeleteAPIKey(id uuid.UUID) error {
 
 	result, err := db.conn.Exec(query, id)
 	if err != nil {
-		return fmt.Errorf("failed to delete API key: %w", err)
+		return fmt.Errorf("couldn't delete API key: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
+		return err
 	}
 
 	if rowsAffected == 0 {
@@ -175,12 +173,12 @@ func (db *DB) ToggleAPIKey(id uuid.UUID) error {
 
 	result, err := db.conn.Exec(query, id)
 	if err != nil {
-		return fmt.Errorf("failed to toggle API key: %w", err)
+		return fmt.Errorf("couldn't toggle API key: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
+		return err
 	}
 
 	if rowsAffected == 0 {

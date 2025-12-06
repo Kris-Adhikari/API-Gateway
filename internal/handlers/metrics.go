@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -59,19 +58,17 @@ func (h *MetricsHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.checkPostgreSQL(ctx); err != nil {
-		health.Services["postgresql"] = "unhealthy: " + err.Error()
+		health.Services["postgresql"] = "down"
 		health.Status = "degraded"
-		log.Printf("[WARN] PostgreSQL health check failed: %v", err)
 	} else {
-		health.Services["postgresql"] = "healthy"
+		health.Services["postgresql"] = "ok"
 	}
 
 	if err := h.checkRedis(ctx); err != nil {
-		health.Services["redis"] = "unhealthy: " + err.Error()
+		health.Services["redis"] = "down"
 		health.Status = "degraded"
-		log.Printf("[WARN] Redis health check failed: %v", err)
 	} else {
-		health.Services["redis"] = "healthy"
+		health.Services["redis"] = "ok"
 	}
 
 	statusCode := http.StatusOK

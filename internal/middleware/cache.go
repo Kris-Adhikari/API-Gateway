@@ -3,7 +3,6 @@ package middleware
 import (
 	"bytes"
 	"context"
-	"log"
 	"net/http"
 	"time"
 
@@ -60,13 +59,11 @@ func (m *CacheMiddleware) Middleware(next http.Handler) http.Handler {
 		cached, err := m.cacheService.Get(ctx, cacheKey)
 
 		if err != nil {
-			log.Printf("[WARN] Cache get error: %v", err)
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		if cached != nil {
-			log.Printf("[INFO] Cache HIT: %s %s", r.Method, r.URL.Path)
 			m.metricsCollector.RecordCacheHit()
 			w.Header().Set("X-Cache", "HIT")
 			w.Header().Set("Content-Type", "application/json")
@@ -75,7 +72,6 @@ func (m *CacheMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		log.Printf("[INFO] Cache MISS: %s %s", r.Method, r.URL.Path)
 		m.metricsCollector.RecordCacheMiss()
 		w.Header().Set("X-Cache", "MISS")
 
@@ -88,11 +84,7 @@ func (m *CacheMiddleware) Middleware(next http.Handler) http.Handler {
 				Body:       rw.body.Bytes(),
 			}
 
-			if err := m.cacheService.Set(ctx, cacheKey, cachedResp, m.cacheTTL); err != nil {
-				log.Printf("[WARN] Failed to cache response: %v", err)
-			} else {
-				log.Printf("[INFO] Cached response: %s %s (TTL: %v)", r.Method, r.URL.Path, m.cacheTTL)
-			}
+			m.cacheService.Set(ctx, cacheKey, cachedResp, m.cacheTTL)
 		}
 	})
 }

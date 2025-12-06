@@ -58,12 +58,10 @@ func (h *AdminHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.db.CreateAPIKey(apiKey); err != nil {
-		log.Printf("[ERROR] Failed to create API key: %v", err)
-		http.Error(w, `{"error":"Failed to create API key"}`, http.StatusInternalServerError)
+		log.Printf("Couldn't create API key: %v", err)
+		http.Error(w, `{"error":"Couldn't create API key"}`, http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("[INFO] Created new API key: %s (%s)", apiKey.Name, apiKey.Key)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -78,8 +76,8 @@ func (h *AdminHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 
 	keys, err := h.db.ListAPIKeys()
 	if err != nil {
-		log.Printf("[ERROR] Failed to list API keys: %v", err)
-		http.Error(w, `{"error":"Failed to list API keys"}`, http.StatusInternalServerError)
+		log.Printf("Couldn't list API keys: %v", err)
+		http.Error(w, `{"error":"Couldn't list API keys"}`, http.StatusInternalServerError)
 		return
 	}
 
@@ -106,12 +104,10 @@ func (h *AdminHandler) DeleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.db.DeleteAPIKey(id); err != nil {
-		log.Printf("[ERROR] Failed to delete API key: %v", err)
-		http.Error(w, `{"error":"Failed to delete API key"}`, http.StatusInternalServerError)
+		log.Printf("Couldn't delete API key: %v", err)
+		http.Error(w, `{"error":"Couldn't delete API key"}`, http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("[INFO] Deleted API key: %s", id)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -137,12 +133,10 @@ func (h *AdminHandler) ToggleAPIKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.db.ToggleAPIKey(id); err != nil {
-		log.Printf("[ERROR] Failed to toggle API key: %v", err)
-		http.Error(w, `{"error":"Failed to toggle API key"}`, http.StatusInternalServerError)
+		log.Printf("Couldn't toggle API key: %v", err)
+		http.Error(w, `{"error":"Couldn't toggle API key"}`, http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("[INFO] Toggled API key: %s", id)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

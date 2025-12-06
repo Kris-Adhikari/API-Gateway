@@ -15,27 +15,22 @@ import (
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatalf("Couldn't load config: %v", err)
 	}
 
-	log.Printf("Starting API Gateway")
-	log.Printf("Port: %s", cfg.Port)
-	log.Printf("Backend: %s", cfg.BackendURL)
-	log.Println()
+	log.Printf("Starting on port %s → %s", cfg.Port, cfg.BackendURL)
 
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("Database connection failed: %v", err)
 	}
 	defer db.Close()
-	log.Printf("Connected to PostgreSQL")
 
 	rateLimiter, err := services.NewRateLimiter(cfg.RedisURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		log.Fatalf("Redis connection failed: %v", err)
 	}
 	defer rateLimiter.Close()
-	log.Printf("Connected to Redis")
 
 	cacheService := services.NewCacheService(rateLimiter.GetClient(), 60*time.Second)
 	metricsCollector := services.NewMetricsCollector()
@@ -75,12 +70,9 @@ func main() {
 		Handler: mux,
 	}
 
-	log.Printf("API Gateway started on port %s", cfg.Port)
-	log.Printf("Forwarding requests to %s", cfg.BackendURL)
-	log.Printf("Admin endpoints available at /admin/keys")
-	log.Printf("Ready to accept requests")
+	log.Printf("Ready")
 
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+		log.Fatalf("Server error: %v", err)
 	}
 }

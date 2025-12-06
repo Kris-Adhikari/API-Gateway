@@ -36,8 +36,8 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		)
 
 		if err != nil {
-			log.Printf("[ERROR] Rate limiter error: %v", err)
-			http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+			log.Printf("Rate limiter error: %v", err)
+			http.Error(w, `{"error":"Internal error"}`, http.StatusInternalServerError)
 			return
 		}
 
@@ -47,11 +47,11 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		w.Header().Set("X-RateLimit-Remaining-Hour", fmt.Sprintf("%d", remainingHour))
 
 		if !allowed {
-			log.Printf("[WARN] Rate limit exceeded for API key: %s", apiKey.Name)
+			log.Printf("Rate limited: %s", apiKey.Name)
 			m.metricsCollector.RecordRateLimitHit()
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
-			fmt.Fprintf(w, `{"error":"Rate limit exceeded. Try again later."}`)
+			fmt.Fprintf(w, `{"error":"Rate limit exceeded"}`)
 			return
 		}
 

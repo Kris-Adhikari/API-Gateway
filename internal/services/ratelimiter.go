@@ -21,7 +21,7 @@ func NewRateLimiter(redisURL string) (*RateLimiter, error) {
 	defer cancel()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+		return nil, fmt.Errorf("Redis not responding: %w", err)
 	}
 
 	return &RateLimiter{client: client}, nil
@@ -41,7 +41,7 @@ func (rl *RateLimiter) AllowRequest(ctx context.Context, apiKey string, limitPer
 
 	minuteAllowed, minuteRemaining, err := rl.tokenBucket(ctx, minuteKey, limitPerMinute, 60)
 	if err != nil {
-		return false, 0, 0, fmt.Errorf("failed to check minute rate limit: %w", err)
+		return false, 0, 0, fmt.Errorf("minute rate check failed: %w", err)
 	}
 
 	if !minuteAllowed {
@@ -51,7 +51,7 @@ func (rl *RateLimiter) AllowRequest(ctx context.Context, apiKey string, limitPer
 
 	hourAllowed, hourRemaining, err := rl.tokenBucket(ctx, hourKey, limitPerHour, 3600)
 	if err != nil {
-		return false, 0, 0, fmt.Errorf("failed to check hour rate limit: %w", err)
+		return false, 0, 0, fmt.Errorf("hour rate check failed: %w", err)
 	}
 
 	if !hourAllowed {

@@ -25,27 +25,24 @@ func (m *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiKey := r.Header.Get("X-API-Key")
 		if apiKey == "" {
-			log.Printf("[WARN] Request without API key: %s %s", r.Method, r.URL.Path)
-			http.Error(w, `{"error":"Missing API key. Please provide X-API-Key header."}`, http.StatusUnauthorized)
+			http.Error(w, `{"error":"Missing API key"}`, http.StatusUnauthorized)
 			return
 		}
 
 		key, err := m.db.GetAPIKeyByKey(apiKey)
 		if err != nil {
-			log.Printf("[ERROR] Database error validating API key: %v", err)
-			http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+			log.Printf("Auth DB error: %v", err)
+			http.Error(w, `{"error":"Internal error"}`, http.StatusInternalServerError)
 			return
 		}
 
 		if key == nil {
-			log.Printf("[WARN] Invalid API key attempted: %s", apiKey)
 			http.Error(w, `{"error":"Invalid API key"}`, http.StatusUnauthorized)
 			return
 		}
 
 		if !key.IsActive {
-			log.Printf("[WARN] Inactive API key attempted: %s", apiKey)
-			http.Error(w, `{"error":"API key is inactive"}`, http.StatusUnauthorized)
+			http.Error(w, `{"error":"API key inactive"}`, http.StatusUnauthorized)
 			return
 		}
 

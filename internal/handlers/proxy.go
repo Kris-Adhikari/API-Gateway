@@ -51,36 +51,21 @@ func (h *ProxyHandler) logRequest(r *http.Request, status int, duration time.Dur
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	durationMs := duration.Milliseconds()
 
-	var level, symbol string
-	if status >= 500 {
-		level = "ERROR"
-		symbol = "✗"
-	} else if status >= 400 {
-		level = "WARN"
-		symbol = "✗"
-	} else {
-		level = "INFO"
-		symbol = "→"
-	}
-
-	logMsg := fmt.Sprintf("[%s] %-5s %s %s %s %d %dms",
+	logMsg := fmt.Sprintf("[%s] %s %s %d %dms",
 		timestamp,
-		level,
-		symbol,
 		r.Method,
 		r.URL.Path,
 		status,
 		durationMs,
 	)
 
-	// Get API key from context if available
 	apiKey := middleware.GetAPIKeyFromContext(r.Context())
 	if apiKey != nil {
-		logMsg += fmt.Sprintf(" [key:%s]", apiKey.Name)
+		logMsg += fmt.Sprintf(" | %s", apiKey.Name)
 	}
 
 	if errMsg != "" {
-		logMsg += fmt.Sprintf(" [%s]", errMsg)
+		logMsg += fmt.Sprintf(" | %s", errMsg)
 	}
 
 	log.Println(logMsg)
@@ -100,7 +85,7 @@ func (h *ProxyHandler) logRequest(r *http.Request, status int, duration time.Dur
 	}
 
 	if err := h.db.LogRequest(requestLog); err != nil {
-		log.Printf("Failed to log request to database: %v", err)
+		log.Printf("DB logging error: %v", err)
 	}
 
 	h.metricsCollector.RecordRequest(int(durationMs), status)

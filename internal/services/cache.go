@@ -34,7 +34,7 @@ func (cs *CacheService) Get(ctx context.Context, key string) (*CachedResponse, e
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get from cache: %w", err)
+		return nil, fmt.Errorf("cache read failed: %w", err)
 	}
 
 	return &CachedResponse{
@@ -50,7 +50,7 @@ func (cs *CacheService) Set(ctx context.Context, key string, response *CachedRes
 
 	err := cs.client.Set(ctx, key, response.Body, ttl).Err()
 	if err != nil {
-		return fmt.Errorf("failed to set cache: %w", err)
+		return fmt.Errorf("cache write failed: %w", err)
 	}
 
 	return nil
