@@ -5,12 +5,12 @@
 - API key authentication with PostgreSQL
 - Tracked system metrics like cache hits, cache misses, and rate limits
 ### Flowchart of Design
-My interpretation of the design. Tried to use color coding to signify the direction of the path/flow for:
+Tried to use color coding to show the direction of the path/flow for:
   - Response from Backend API (Red)
   - Request from Proxy Handler (Blue)
   - Cache hit and Cache miss (Green)
 ##### Backend API "external REST service" is [jsonplaceholder](https://jsonplaceholder.typicode.com/) for context
-<img width="585" height="452" alt="Screenshot (232)" src="https://github.com/user-attachments/assets/b11ac7f9-3e8b-46c1-957c-82c43d755db8" />
+<img width="585" height="452" alt="image" src="https://github.com/user-attachments/assets/39ea986c-37dd-48ac-8470-b5ebee0ac51f" />
 
 ### Tech
 - Built using Go 1.21
@@ -43,3 +43,5 @@ curl http://localhost:8080/metrics
 - Cache hit: ~10ms
 - Cache miss: ~230ms
 - Average improvement: 220ms
+
+
